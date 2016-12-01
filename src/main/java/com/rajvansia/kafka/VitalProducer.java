@@ -14,11 +14,13 @@ public class VitalProducer implements Runnable {
 
   private final KafkaProducer<String, VitalMeasurement> producer;
   private final String topic;
+  private final String device;
 
-  public VitalProducer(String brokers, String topic) {
+  public VitalProducer(String brokers, String topic, String device) {
     Properties prop = createProducerConfig(brokers);
     this.producer = new KafkaProducer<String, VitalMeasurement>(prop);
     this.topic = topic;
+    this.device = device;
   }
 
   private static Properties createProducerConfig(String brokers) {
@@ -45,14 +47,23 @@ public class VitalProducer implements Runnable {
 		  double Hr = rand.nextInt(120 - 60) + 60;
 		  double  NibpSystolic= rand.nextInt(140 - 80) + 80;
 		  double  NibpSyDiastolic= rand.nextInt(100 - 40) + 40;
+		  double  Rr= rand.nextInt(50 - 10) + 10;
 		  Date date = new Date();
 		  
     List<VitalMeasurement> vitals = new ArrayList<VitalMeasurement>();
-    vitals.add(new VitalMeasurement("99897", "Pulse Oximeter", "SpO2",SpO2, "%", date ));
-    vitals.add(new VitalMeasurement("99897", "Cardiac Monitor", "CO",Co, "L/min", date ));
-    vitals.add(new VitalMeasurement("99897", "Physiological Monitor", "HR",Hr, "BPM", date ));
-    vitals.add(new VitalMeasurement("99897", "NIBP Cuff", "BP Systolic",NibpSystolic, "mmHg", date ));
-    vitals.add(new VitalMeasurement("99897", "NIBP Cuff", "BP Diastolic",NibpSyDiastolic, "mmHg", date ));
+    switch (device){
+    case "PulseOximeter": vitals.add(new VitalMeasurement("99897", "Pulse Oximeter", "SpO2",SpO2, "%", date ));
+    					  vitals.add(new VitalMeasurement("99897", "Physiological Monitor", "HR",Hr, "BPM", date ));
+    break;
+    case "CardiacMonitor":vitals.add(new VitalMeasurement("99897", "Cardiac Monitor", "CO",Co, "L/min", date ));
+    break;
+    case "Ventilator":vitals.add(new VitalMeasurement("99897", "Ventilator", "RR",Rr, "breaths/min", date ));
+    break;
+    case "NibpCuff": vitals.add(new VitalMeasurement("99897", "NIBP Cuff", "BP Systolic",NibpSystolic, "mmHg", date ));
+    				vitals.add(new VitalMeasurement("99897", "NIBP Cuff", "BP Diastolic",NibpSyDiastolic, "mmHg", date ));
+    break;
+    default: vitals.add(new VitalMeasurement("99897", "Pulse Oximeter", "SpO2",SpO2, "%", date ));
+    }
     for (final VitalMeasurement vital : vitals) {
 
       producer.send(new ProducerRecord<String, VitalMeasurement>(topic, vital.getPatientId(), vital),
@@ -61,7 +72,7 @@ public class VitalProducer implements Runnable {
               if (e != null) {
                 e.printStackTrace();
               }
-//              System.out.println("Sent:" + vital.toString());
+              System.out.println("Sent:" + vital.toString());
             }
           });
       try {
